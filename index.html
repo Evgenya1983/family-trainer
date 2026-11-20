@@ -1,0 +1,155 @@
+﻿<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Family Trainer — тренажёр по Spotlight 6</title>
+    <style>
+      body { font-family: Arial, sans-serif; text-align: center; padding: 20px; background: #f0f8ff; }
+      .card { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin: 20px auto; max-width: 350px; }
+      h1 { color: #333; font-size: 22px; }
+      p { font-size: 26px; font-weight: bold; color: #2c3e50; }
+      input { padding: 12px; font-size: 16px; width: 200px; margin: 8px 0; border: 1px solid #ccc; border-radius: 6px; }
+      button { padding: 14px 24px; font-size: 17px; margin: 8px; border: none; border-radius: 8px; cursor: pointer; }
+      .btn-listen { background-color: #3498db; color: white; }
+      .btn-say { background-color: #e74c3c; color: white; }
+      .score { font-size: 20px; color: #2ecc71; font-weight: bold; margin-top: 15px; }
+    </style>
+  </head>
+  <body>
+
+    <!-- Экран входа -->
+    <div id="login" class="card">
+      <h1>🗣️ Тренажёр по английскому</h1>
+      <p style="font-size: 16px;">Введи имя и класс, чтобы начать</p>
+      <input id="inpName" type="text" placeholder="Имя (например, Аня)">
+      <br>
+      <input id="inpGrade" type="text" placeholder="Класс (например, 6а)">
+      <br><br>
+      <button class="btn-listen" onclick="startGame()">Начать игру</button>
+    </div>
+
+    <!-- Игровая часть (скрыта, пока не войдёшь) -->
+    <div id="game" class="card" style="display: none;">
+      <h1>Модуль 1: Семья</h1>
+      <p id="ruWord"></p>
+      <p id="enWord"></p>
+
+      <button class="btn-listen" onclick="speak()">🔊 Послушать слово</button>
+      <br>
+      <button class="btn-say" onclick="startRecognition()">🎤 Сказать слово</button>
+
+      <p class="score">Счёт: <span id="score">0</span></p>
+    </div>
+
+    <script>
+      // Слова из модуля 1 Spotlight 6 (семья)
+      const words = [
+        {ru: "мама", en: "mum"},
+        {ru: "папа", en: "dad"},
+        {ru: "мать", en: "mother"},
+        {ru: "отец", en: "father"},
+        {ru: "сестра", en: "sister"},
+        {ru: "брат", en: "brother"},
+        {ru: "бабушка", en: "grandmother"},
+        {ru: "дедушка", en: "grandfather"},
+        {ru: "дядя", en: "uncle"},
+        {ru: "близнецы", en: "twins"}
+      ];
+
+      let currentIndex = 0;
+      let score = 0;
+      let playerName = "";
+      let playerGrade = "";
+
+      const ruWordEl = document.getElementById('ruWord');
+      const enWordEl = document.getElementById('enWord');
+      const scoreEl = document.getElementById('score');
+
+      function updateWord() {
+        const w = words[currentIndex];
+        ruWordEl.innerText = w.ru;
+        enWordEl.innerText = w.en;
+      }
+
+      // Озвучка слова
+      function speak() {
+        const msg = new SpeechSynthesisUtterance(enWordEl.innerText);
+        msg.lang = 'en-US';
+        window.speechSynthesis.speak(msg);
+      }
+
+      // Распознавание речи
+      function startRecognition() {
+        if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
+          alert('Твой браузер не поддерживает распознавание речи. Попробуй Google Chrome.');
+          return;
+        }
+
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'en-US';
+
+        recognition.onresult = (event) => {
+          const spokenText = event.results[0][0].transcript.toLowerCase().trim();
+          const correctText = enWordEl.innerText.toLowerCase();
+
+          if (spokenText.includes(correctText)) {
+            score++;
+            scoreEl.innerText = score;
+            alert('Молодец! Ты сказала: ' + spokenText);
+
+            currentIndex++;
+            if (currentIndex >= words.length) {
+              alert('Ты прошла все слова! Всего очков: ' + score);
+              sendResults(words.length, score); // отправляем результаты
+              location.reload(); // перезапуск, чтобы снова был экран входа
+            } else {
+              updateWord();
+            }
+          } else {
+            alert('Не совсем. Я услышала: "' + spokenText + '". Попробуй сказать: ' + correctText);
+          }
+        };
+        recognition.onerror = (e) => {
+          alert('Ошибка распознавания: ' + e.error);
+        };
+
+        recognition.start();
+      }
+
+      // Экран входа
+      function startGame() {
+        const name = document.getElementById('inpName').value.trim();
+        const grade = document.getElementById('inpGrade').value.trim();
+        if (name === "") {
+          alert("Введи имя, пожалуйста!");
+          return;
+        }
+        playerName = name;
+        playerGrade = grade;
+        document.getElementById('login').style.display = "none";
+        document.getElementById('game').style.display = "block";
+        updateWord(); // показываем первое слово
+      }
+
+      // Отправка результатов в Google Таблицу
+      function sendResults(total, correct) {
+        // ⚠️ ВСТАВЬ СЮДА URL ИЗ GOOGLE APPS SCRIPT (см. ниже)
+        const URL = "https://script.google.com/macros/s/AKfycbxNxfmmXOzhv1sa7pNsMk8XtlvP-eh9DehYmLU7c-yf5C_0XfHRlXQ7_gBIsZ0l4nzJ/exec";
+
+        fetch(URL, {
+          method: "POST",
+          mode: "no-cors",
+          headers: { "Content-Type": "text/plain" },
+          body: JSON.stringify({
+            name: playerName,
+            grade: playerGrade,
+            total: total,
+            correct: correct
+          })
+        }).catch(err => console.error(err));
+      }
+    </script>
+  </body>
+</html>
